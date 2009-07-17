@@ -1,0 +1,6 @@
+Revision history for Perl extension Getopt::String.
+
+0.01  Fri Jul 17 17:49:07 2009
+	- original version; created by h2xs 1.23 with options
+		-n Getopt::String -p parseopt_ parseopt.h
+
