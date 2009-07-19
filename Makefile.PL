@@ -49,3 +49,12 @@ else {
         copy( $fallback, $file ) or die "Can't copy $fallback to $file: $!";
     }
 }
+
+
+sub MY::postamble {
+return <<EOF
+parseopt.c: parseopt.re2c.c
+\tre2c \$< > \$@
+EOF
+}
+
