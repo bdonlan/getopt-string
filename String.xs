@@ -4,7 +4,7 @@
 #include "ppport.h"
 
 #include <parseopt.h>
-#include "getopt_string.h"
+#include "handlers.h"
 #include "const-c.inc"
 
 MODULE = Getopt::String		PACKAGE = Getopt::String		PREFIX = parseopt_

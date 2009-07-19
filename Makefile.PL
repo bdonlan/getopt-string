@@ -19,7 +19,7 @@ WriteMakefile(
     LIBS          => [split(/\s+/, $glib{libs})],
     INC           => '-I.',           # e.g., '-I. -I/usr/include/other'
     CCFLAGS       => "-std=gnu99 $glib{cflags}",
-    OBJECT        => 'String.o parseopt.o getopt_string.o',    # link all the C files too
+    OBJECT        => 'String.o parseopt.o handlers.o',    # link all the C files too
 );
 if ( eval { require ExtUtils::Constant; 1 } ) {
 

@@ -1,4 +1,5 @@
 #include "parseopt.h"
+#include "handlers.h"
 
 #include "EXTERN.h"
 #include "perl.h"
