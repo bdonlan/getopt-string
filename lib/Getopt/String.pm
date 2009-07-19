@@ -5,23 +5,82 @@ use warnings;
 use Carp;
 use XSLoader;
 
-use Sub::Exporter -setup => {
-    exports => [qw( PARSEOPT_EATARG PARSEOPT_NOARG PARSEOPT_STOP )],
-};
-
 our $VERSION = '0.01';
 
-XSLoader::load('Getopt::String', $VERSION);
+use Sub::Exporter -setup => {
+	exports => [qw( NO_ARG REQUIRED_ARG OPTIONAL_ARG )]
+};
 
-*PARSEOPT_EATARG = value('PARSEOPT_EATARG');
-*PARSEOPT_NOARG  = value('PARSEOPT_NOARG');
-*PARSEOPT_STOP   = value('PARSEOPT_STOP');
+use constant {
+	NO_ARG => 0,
+	REQUIRED_ARG => 1,
+	OPTIONAL_ARG => 2
+};
 
-sub value {
-    my $name = shift;
-    my ($error, $val) = constant($name);
-    croak $error if $error;
-    return sub () { $val };
+use Moose;
+use Getopt::String::Tokenizer qw/get_token/;
+
+has '_string' => (is => 'rw', isa => 'Str', required => 1);
+has 'escapes' => (is => 'rw', isa => 'HashRef[Str]',
+	default => sub { { 'n' => "\n",
+				       'r' => "\r",
+				       't' => "\t"
+			       } }
+	);
+has '_args' => (is => 'ro', isa => 'HashRef[Int]', required => 1);
+has 'croak_on_malformed' => (is => 'ro', isa => 'Bool', default => 0);
+
+sub BUILDARGS {
+	my ($self, $str, $args, @opts) = @_;
+	return { _string => $str, _args => $args, @opts };
+}
+
+sub remain {
+	my ($self) = @_;
+	return $self->_string;
+}
+
+sub next {
+	my ($self) = @_;
+
+	my ($token, $remain) = get_token($self->_string, $self->escapes);
+	
+	return (undef, undef) unless defined $token;
+
+	my ($opt, $arg);
+	if ($token =~ m{^--([^=]*)(?:=(.+))?$}) {
+		($opt, $arg) = ($1, $2);
+	} elsif ($token =~ m{^-(.)(?:(.+))?$}) {
+		($opt, $arg) = ($1, $2);
+	} else {
+		$self->_string($remain);
+		return (undef, $token);
+	}
+
+	my $argmode = $self->_args->{$opt} || NO_ARG;
+	if (defined $arg) {
+		if ($self->croak_on_malformed && $argmode == NO_ARG) {
+			croak "Unexpected argument for option '$opt'";
+		}
+	} elsif ($argmode != NO_ARG) {
+		## We don't have an inline argument (as in --foo=bar or -xfoo)
+		## but we may have another token we can consume for an argument...
+		my ($token2, $remain2) = get_token($remain, $self->escapes);
+
+		## Don't consume arguments that look like options;
+		## the user can use inline args if that's desired
+		if (defined $token2 && !($token2 =~ m{^-})) {
+			$arg = $token2;
+			$remain = $remain2;
+		}
+
+		if ($self->croak_on_malformed && $argmode == REQUIRED_ARG) {
+			croak "Missing mandatory argument for option '$opt'";
+		}
+	}
+
+	$self->_string($remain);
+	return ($opt, $arg);
 }
 
 1;
