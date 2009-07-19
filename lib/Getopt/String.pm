@@ -50,9 +50,9 @@ sub next {
 	return (undef, undef) unless defined $token;
 
 	my ($opt, $arg);
-	if ($token =~ m{^--([^=]*)(?:=(.+))?$}) {
+	if ($token =~ m{^--([^=]*)(?:=(.+))?$}s) {
 		($opt, $arg) = ($1, $2);
-	} elsif ($token =~ m{^-(.)(?:(.+))?$}) {
+	} elsif ($token =~ m{^-(.)(?:(.+))?$}s) {
 		($opt, $arg) = ($1, $2);
 	} else {
 		$self->_string($remain);
