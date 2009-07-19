@@ -11,10 +11,12 @@ use Sub::Exporter -setup => {
 	exports => [qw( NO_ARG REQUIRED_ARG OPTIONAL_ARG )]
 };
 
+## These are opaque references to prevent confusion with aliases
+## Note that this means we must use 'eq' instead of == for comparisons!
 use constant {
-	NO_ARG => 0,
-	REQUIRED_ARG => 1,
-	OPTIONAL_ARG => 2
+	NO_ARG => \"NO_ARG",
+	REQUIRED_ARG => \"REQUIRED_ARG",
+	OPTIONAL_ARG => \"OPTIONAL_ARG"
 };
 
 use Moose;
@@ -27,7 +29,7 @@ has 'escapes' => (is => 'rw', isa => 'HashRef[Str]',
 				       't' => "\t"
 			       } }
 	);
-has '_args' => (is => 'ro', isa => 'HashRef[Int]', required => 1);
+has '_args' => (is => 'ro', isa => 'HashRef', required => 1);
 has 'croak_on_malformed' => (is => 'ro', isa => 'Bool', default => 0);
 
 sub BUILDARGS {
@@ -57,12 +59,20 @@ sub next {
 		return (undef, $token);
 	}
 
-	my $argmode = $self->_args->{$opt} || NO_ARG;
+	my $argmode = $opt;
+
+	while (defined $argmode && !ref $argmode) {
+		## resolve an argument alias
+		$opt = $argmode;
+		$argmode = $self->_args->{$opt};
+	}
+	$argmode = NO_ARG unless defined $argmode;
+
 	if (defined $arg) {
-		if ($self->croak_on_malformed && $argmode == NO_ARG) {
+		if ($self->croak_on_malformed && $argmode eq NO_ARG) {
 			croak "Unexpected argument for option '$opt'";
 		}
-	} elsif ($argmode != NO_ARG) {
+	} elsif ($argmode ne NO_ARG) {
 		## We don't have an inline argument (as in --foo=bar or -xfoo)
 		## but we may have another token we can consume for an argument...
 		my ($token2, $remain2) = get_token($remain, $self->escapes);
@@ -74,7 +84,7 @@ sub next {
 			$remain = $remain2;
 		}
 
-		if ($self->croak_on_malformed && $argmode == REQUIRED_ARG) {
+		if ($self->croak_on_malformed && $argmode eq REQUIRED_ARG) {
 			croak "Missing mandatory argument for option '$opt'";
 		}
 	}
